@@ -1,13 +1,13 @@
-package jersey.test;
+package jersey.test.constructor_exception;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 
-@Path("/MyResource")
-public class MyResource {
+@Path("/constructor-exception")
+public class ConstructorExceptionResource {
 
-    public MyResource() {
+    public ConstructorExceptionResource() {
         throw new RuntimeException();
     }
     
