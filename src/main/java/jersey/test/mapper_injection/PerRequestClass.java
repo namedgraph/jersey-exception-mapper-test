@@ -6,16 +6,24 @@ import java.net.URI;
  *
  * @author Martynas Jusevičius <martynas@atomgraph.com>
  */
-public class PerRequestClass {
+public class PerRequestClass implements PerRequestInterface {
     
-    private URI uri;
+    private final URI uri;
+    private final FieldInterface field;
     
-    public PerRequestClass(URI uri) {
+    public PerRequestClass(URI uri, FieldInterface field) {
         this.uri = uri;
+        this.field = field;
     }
     
+    @Override
     public URI getURI() {
         return uri;
+    }
+
+    @Override
+    public FieldInterface getField() {
+        return field;
     }
     
 }

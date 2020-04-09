@@ -15,10 +15,12 @@ public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundExceptio
 
     public static final int STATUS = 666;
     
-    @Inject PerRequestClass obj;
+    @Inject PerRequestInterface obj;
             
     @Override
     public Response toResponse(NotFoundException e) {
+        if (obj != null) return Response.status(500).entity(obj.getField()).build();
+            
         return Response.status(STATUS).location(obj.getURI()).build();
     }
     
