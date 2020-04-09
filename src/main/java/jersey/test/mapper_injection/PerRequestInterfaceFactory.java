@@ -14,19 +14,11 @@ public class PerRequestInterfaceFactory implements Factory<PerRequestInterface> 
 
     @Override
     public PerRequestInterface provide() {
-        FieldInterface field = getField();
-        
-        if (getField() != null) return new PerRequestClass(uriInfo.getRequestUri(), field);
-        
         return null;
     }
 
     @Override
     public void dispose(PerRequestInterface t) {
-    }
-    
-    FieldInterface getField() {
-        return null;
     }
     
 }
