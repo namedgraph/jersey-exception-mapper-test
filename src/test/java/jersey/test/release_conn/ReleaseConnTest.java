@@ -8,6 +8,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -71,8 +72,11 @@ public class ReleaseConnTest extends JerseyTest {
             if (count == 10) return "Stop";
             
             // recursive loopback request
-            return client.target(uriInfo.getBaseUriBuilder().path(LoopbackRequestResource.class).build()).
-                    queryParam("count", count + 1).request().get(String.class);
+            try (Response cr = client.target(uriInfo.getBaseUriBuilder().path(LoopbackRequestResource.class).build()).
+                    queryParam("count", count + 1).request().get())
+            {
+                return cr.readEntity(String.class);
+            }
         }
     }
     
@@ -91,7 +95,10 @@ public class ReleaseConnTest extends JerseyTest {
             for (int i = 0; i <= 10; i++)
             {
                 System.out.println("Count: " + i);
-                client.target(URI.create("https://www.google.com/")).request().get();
+                try (Response cr = client.target(URI.create("https://www.google.com/")).request().get())
+                {
+                    String html = cr.readEntity(String.class);
+                }
             }
             
             return "Stop";
