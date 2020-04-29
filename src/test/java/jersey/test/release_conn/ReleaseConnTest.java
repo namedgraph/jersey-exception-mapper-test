@@ -1,6 +1,5 @@
 package jersey.test.release_conn;
 
-import java.net.URI;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -26,21 +25,26 @@ import org.junit.Test;
  * @author Martynas Jusevičius <martynas@atomgraph.com>
  */
 public class ReleaseConnTest extends JerseyTest {
+
+    private final static int MAX_TOTAL = 30;
+    private final static int MAX_PER_ROUTE = 20;
     
     @Override
     public Application configure()
     {
         ClientConfig config = new ClientConfig();
         PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
-        cm.setDefaultMaxPerRoute(5);
-        config.property(ApacheClientProperties.CONNECTION_MANAGER , cm);
+        cm.setMaxTotal(MAX_TOTAL);
+        cm.setDefaultMaxPerRoute(MAX_PER_ROUTE);
         config.connectorProvider(new ApacheConnectorProvider());
+        config.property(ApacheClientProperties.CONNECTION_MANAGER , cm);
+        //config.property(ClientProperties.READ_TIMEOUT, 1_000);
+        
         final Client client = ClientBuilder.newClient(config);
                 
         ResourceConfig rc = new ResourceConfig();
         rc.property(LoggingFeature.LOGGING_FEATURE_LOGGER_LEVEL_SERVER, "WARNING");
         rc.register(LoopbackRequestResource.class);
-        rc.register(ExternalRequestResource.class);
         rc.register(new AbstractBinder()
         {
             @Override
@@ -79,40 +83,10 @@ public class ReleaseConnTest extends JerseyTest {
             }
         }
     }
-    
-    @Path("external")
-    public static class ExternalRequestResource {
-        
-        private final Client client;
-        
-        @Inject
-        ExternalRequestResource(Client client) {
-            this.client = client;
-        }
-        
-        @GET
-        public String get(@QueryParam("count") Integer count) {
-            for (int i = 0; i <= 10; i++)
-            {
-                System.out.println("Count: " + i);
-                try (Response cr = client.target(URI.create("https://www.google.com/")).request().get())
-                {
-                    String html = cr.readEntity(String.class);
-                }
-            }
-            
-            return "Stop";
-        }
-    }
 
     @Test
     public void testLoopback() {
         assertEquals("Stop", target("loopback").queryParam("count", 0).request().get(String.class));
-    }
-    
-    @Test
-    public void testExternal() {
-        assertEquals("Stop", target("external").request().get(String.class));
     }
     
 }
