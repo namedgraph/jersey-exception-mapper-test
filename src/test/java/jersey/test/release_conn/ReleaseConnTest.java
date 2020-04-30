@@ -59,19 +59,19 @@ public class ReleaseConnTest extends JerseyTest {
     {
         App app = new App();
         app.property(LoggingFeature.LOGGING_FEATURE_LOGGER_LEVEL_SERVER, "WARNING");
-        app.register(LoopbackRequestResource.class);
+        app.register(RequestingResource.class);
         app.register(app);
         
         return app;
     }
 
     @Path("test")
-    public static class LoopbackRequestResource {
+    public static class RequestingResource {
         
         private final App app;
         
         @Inject
-        LoopbackRequestResource(App app) {
+        RequestingResource(App app) {
             this.app = app;
         }
         
