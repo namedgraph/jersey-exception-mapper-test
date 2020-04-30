@@ -1,23 +1,25 @@
 package jersey.test.release_conn;
 
+import java.io.IOException;
+import java.net.URI;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.core.Application;
+import javax.ws.rs.client.ClientRequestContext;
+import javax.ws.rs.client.ClientRequestFilter;
+import javax.ws.rs.core.CacheControl;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.apache.connector.ApacheClientProperties;
 import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 /**
@@ -29,64 +31,91 @@ public class ReleaseConnTest extends JerseyTest {
     private final static int MAX_TOTAL = 30;
     private final static int MAX_PER_ROUTE = 20;
     
-    @Override
-    public Application configure()
+    public class App extends ResourceConfig
     {
-        ClientConfig config = new ClientConfig();
-        PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
-        cm.setMaxTotal(MAX_TOTAL);
-        cm.setDefaultMaxPerRoute(MAX_PER_ROUTE);
-        config.connectorProvider(new ApacheConnectorProvider());
-        config.property(ApacheClientProperties.CONNECTION_MANAGER , cm);
-        //config.property(ClientProperties.READ_TIMEOUT, 1_000);
-        
-        final Client client = ClientBuilder.newClient(config);
-                
-        ResourceConfig rc = new ResourceConfig();
-        rc.property(LoggingFeature.LOGGING_FEATURE_LOGGER_LEVEL_SERVER, "WARNING");
-        rc.register(LoopbackRequestResource.class);
-        rc.register(new AbstractBinder()
-        {
-            @Override
-            protected void configure()
-            {
-                bind(client).to(Client.class);
-            }
-        });
-        
-        return rc;
-    }
-
-    @Path("loopback")
-    public static class LoopbackRequestResource {
-        
-        private final UriInfo uriInfo;
         private final Client client;
         
+        public App()
+        {
+            ClientConfig config = new ClientConfig();
+            PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+            cm.setMaxTotal(MAX_TOTAL);
+            cm.setDefaultMaxPerRoute(MAX_PER_ROUTE);
+            config.connectorProvider(new ApacheConnectorProvider());
+            config.property(ApacheClientProperties.CONNECTION_MANAGER , cm);
+
+            client = ClientBuilder.newClient(config);
+        }
+        
+        public Client getClient()
+        {
+            return client;
+        }
+        
+    }
+    
+    @Override
+    public App configure()
+    {
+        App app = new App();
+        app.property(LoggingFeature.LOGGING_FEATURE_LOGGER_LEVEL_SERVER, "WARNING");
+        app.register(LoopbackRequestResource.class);
+        app.register(app);
+        
+        return app;
+    }
+
+    @Path("test")
+    public static class LoopbackRequestResource {
+        
+        private final App app;
+        
         @Inject
-        LoopbackRequestResource(UriInfo uriInfo, Client client) {
-            this.uriInfo = uriInfo;
-            this.client = client;
+        LoopbackRequestResource(App app) {
+            this.app = app;
         }
         
         @GET
-        public String get(@QueryParam("count") Integer count) {
-            System.out.println("Count: " + count);
-            
-            if (count == 10) return "Stop";
-            
-            // recursive loopback request
-            try (Response cr = client.target(uriInfo.getBaseUriBuilder().path(LoopbackRequestResource.class).build()).
-                    queryParam("count", count + 1).request().get())
+        public String get() {
+            try (Response cr = app.getClient().target(URI.create("https://www.google.com")).
+                    register(new CacheControlFilter(CacheControl.valueOf("no-cache"))). // uncomment ant the test will not fail (will run indefinitely)
+                    request().get())
             {
                 return cr.readEntity(String.class);
             }
         }
     }
 
-    @Test
+    @Test(expected = InternalServerErrorException.class)
     public void testLoopback() {
-        assertEquals("Stop", target("loopback").queryParam("count", 0).request().get(String.class));
+        do
+        {
+            target("test").request().get(String.class);
+        }
+        while (true);
+    }
+    
+    public static class CacheControlFilter implements ClientRequestFilter
+    {
+
+        private final CacheControl cacheControl;
+
+        public CacheControlFilter(CacheControl cacheControl)
+        {
+            this.cacheControl = cacheControl;
+        }
+
+        @Override
+        public void filter(ClientRequestContext request) throws IOException
+        {
+            request.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, getCacheControl());
+        }
+
+        public CacheControl getCacheControl()
+        {
+            return cacheControl;
+        }
+
     }
     
 }
