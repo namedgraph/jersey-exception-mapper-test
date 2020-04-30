@@ -78,7 +78,7 @@ public class ReleaseConnTest extends JerseyTest {
         @GET
         public String get() {
             try (Response cr = app.getClient().target(URI.create("https://www.google.com")).
-                    register(new CacheControlFilter(CacheControl.valueOf("no-cache"))). // uncomment ant the test will not fail (will run indefinitely)
+                    register(new CacheControlFilter(CacheControl.valueOf("no-cache"))). // comment this and the test will not fail (will run indefinitely)
                     request().get())
             {
                 return cr.readEntity(String.class);
